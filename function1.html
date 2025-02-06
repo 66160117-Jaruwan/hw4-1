@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกค่าใช้จ่ายส่วนตัวรายวัน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold mb-4">🎁 บันทึกค่าใช้จ่าย</h2>
+        <form id="expenseForm" class="space-y-4">
+            <input type="text" id="item" placeholder="รายการ" class="w-full p-2 border rounded">
+            <input type="number" id="amount" placeholder="จำนวนเงิน" class="w-full p-2 border rounded">
+            <select id="category" class="w-full p-2 border rounded">
+                <option value="food">อาหาร</option>
+                <option value="transport">การเดินทาง</option>
+                <option value="entertainment">บันเทิง</option>
+                <option value="shopping">ช้อปปิ้ง</option>
+                <option value="others">อื่นๆ</option>
+            </select>
+            <input type="date" id="date" class="w-full p-2 border rounded">
+            <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded">เพิ่มรายการ</button>
+        </form>
+        
+        <h3 class="text-xl font-bold mt-6">รายการค่าใช้จ่าย</h3>
+        <ul id="expenseList" class="mt-2 space-y-2"></ul>
+        
+        <h3 class="text-xl font-bold mt-6">สรุปค่าใช้จ่าย</h3>
+        <div id="summary" class="mt-2 p-4 bg-gray-300 rounded"></div>
+    </div>
+
+    <script>
+        let editIndex = -1;
+
+        document.getElementById('expenseForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            addExpense();
+        });
+
+        function addExpense() {
+            let item = document.getElementById('item').value;
+            let amount = parseFloat(document.getElementById('amount').value);
+            let category = document.getElementById('category').value;
+            let date = document.getElementById('date').value;
+            
+            if (!item || !amount || !category || !date || amount <= 0) {
+                alert('กรุณากรอกข้อมูลให้ครบถ้วนและจำนวนเงินต้องเป็นตัวเลขบวก');
+                return;
+            }
+            
+            let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+            
+            if (editIndex === -1) {
+                // เพิ่มรายการใหม่
+                let expense = { item, amount, category, date };
+                expenses.push(expense);
+            } else {
+                // แก้ไขรายการที่มีอยู่
+                expenses[editIndex] = { item, amount, category, date };
+                editIndex = -1;
+            }
+
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+            displayExpenses();
+            document.getElementById('expenseForm').reset();
+        }
+
+        function editExpense(index) {
+            let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+            let exp = expenses[index];
+            document.getElementById('item').value = exp.item;
+            document.getElementById('amount').value = exp.amount;
+            document.getElementById('category').value = exp.category;
+            document.getElementById('date').value = exp.date;
+            editIndex = index;
+        }
+
+        function deleteExpense(index) {
+            let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+            expenses.splice(index, 1);
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+            displayExpenses();
+        }
+
+        function displayExpenses() {
+            let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+            let expenseList = document.getElementById('expenseList');
+            expenseList.innerHTML = '';
+            expenses.forEach((exp, index) => {
+                let li = document.createElement('li');
+                li.classList.add('p-2', 'bg-gray-200', 'rounded', 'flex', 'justify-between', 'items-center');
+                li.innerHTML = `
+                    <span>${exp.item} - ${exp.amount} บาท (${exp.category}) - ${exp.date}</span>
+                    <div>
+                        <button onclick="editExpense(${index})" class="bg-yellow-500 text-white px-2 py-1 rounded">แก้ไข</button>
+                        <button onclick="deleteExpense(${index})" class="bg-red-500 text-white px-2 py-1 rounded">ลบ</button>
+                    </div>
+                `;
+                expenseList.appendChild(li);
+            });
+            displaySummary(expenses);
+        }
+
+        function displaySummary(expenses) {
+            let summary = document.getElementById('summary');
+            let dailyTotal = {};
+            let monthlyTotal = {};
+            
+            expenses.forEach(exp => {
+                let day = exp.date;
+                let month = exp.date.substring(0, 7);
+                
+                dailyTotal[day] = (dailyTotal[day] || 0) + exp.amount;
+                monthlyTotal[month] = (monthlyTotal[month] || 0) + exp.amount;
+            });
+            
+            let summaryHTML = '<h4 class="font-bold">สรุปรายวัน</h4>';
+            for (let day in dailyTotal) {
+                summaryHTML += `<p>${day}: ${dailyTotal[day]} บาท</p>`;
+            }
+            
+            summaryHTML += '<h4 class="font-bold mt-2">สรุปรายเดือน</h4>';
+            for (let month in monthlyTotal) {
+                summaryHTML += `<p>${month}: ${monthlyTotal[month]} บาท</p>`;
+            }
+            
+            summary.innerHTML = summaryHTML;
+        }
+
+        displayExpenses();
+    </script>
+</body>
+</html>
